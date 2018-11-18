@@ -17,16 +17,14 @@ namespace dossier
         public Manager()
         {
             InitializeComponent();
-            _player = new Player();
-            _player.CurrentHP = 10;
-            _player.MaxHP = 10;
-            _player.Gold = 20;
-            _player.Experience = 0;
-            _player.Level = 1;
+            _player = new Player(10, 10, 20, 0, 1);
             labelHP.Text = _player.CurrentHP.ToString();
             labelGold.Text = _player.Gold.ToString();
             labelEXP.Text = _player.Experience.ToString();
             labelLevel.Text = _player.Level.ToString();
+
+            Location loc = new Location(0, "Home", "Your home");
+            
         }
     }
 }
