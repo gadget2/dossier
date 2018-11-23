@@ -23,7 +23,6 @@ namespace dossier
             labelEXP.Text = _player.Experience.ToString();
             labelLevel.Text = _player.Level.ToString();
 
-            Location loc = new Location(0, "Home", "Your home");
             
         }
     }
