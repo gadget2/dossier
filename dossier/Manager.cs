@@ -19,11 +19,11 @@ namespace dossier
         {
             InitializeComponent();
             _player = new Player(10, 10, 20, 0, 1);
+            MoveTo(World.LocationByID(World.ID_LOCATION_HOME));
             labelHP.Text = _player.CurrentHP.ToString();
             labelGold.Text = _player.Gold.ToString();
             labelEXP.Text = _player.Experience.ToString();
             labelLevel.Text = _player.Level.ToString();
-            
         }
 
         private void MoveTo(Location newLocation)
@@ -248,12 +248,131 @@ namespace dossier
         }
 
         private void btnUseWeapon_Click(object sender, EventArgs e)
-        {
+        {         
+            Weapon currentWeapon = (Weapon)cboWeapons.SelectedItem;
 
+            // Calculate player damage
+            int dmg = RandomNumberGenerator.NumberBetween(currentWeapon.MinDMG, currentWeapon.MaxDMG);
+
+            // Deal damage to monster health
+            _currentmonster.CurrentHP -= dmg;
+
+            // Feedback
+            rtbMessages.Text += "You hit the " + _currentmonster.Name + " for " + dmg.ToString() + " points." 
+                + Environment.NewLine;
+
+            // Run this routine if the monster is dead as a result
+            if (_currentmonster.CurrentHP <= 0)
+            {
+                rtbMessages.Text += Environment.NewLine;
+                rtbMessages.Text += "You defeated the " + _currentmonster.Name + Environment.NewLine;
+
+                // Reward experience
+                _player.Experience += _currentmonster.RewardXP;
+                rtbMessages.Text += "You recieve " + _currentmonster.RewardXP.ToString() + " experience points." 
+                    + Environment.NewLine;
+
+                // Reward gold
+                _player.Gold += _currentmonster.RewardGold;
+                rtbMessages.Text += "You receive " + _currentmonster.RewardGold.ToString() + " gold." 
+                    + Environment.NewLine;
+
+                // Get loot items from the monster, distributed randomly 
+                List<InventoryItem> lootedItems = new List<InventoryItem>();
+
+                foreach (LootItem item in _currentmonster.LootTable)
+                {
+                    if (RandomNumberGenerator.NumberBetween(1, 100) <= item.DropPercentage)
+                    {
+                        lootedItems.Add(new InventoryItem(item.Details, 1));
+                    }
+                }
+                // Add the default loot items if no items were randomly selected
+                if (lootedItems.Count == 0)
+                {
+                    foreach (LootItem item in _currentmonster.LootTable)
+                    {
+                        if (item.IsDefaultItem)
+                        {
+                            lootedItems.Add(new InventoryItem(item.Details ,1));
+                        }
+                    }
+                }
+                foreach (InventoryItem inventitem in lootedItems)
+                {
+                    _player.AddItemToInventory(inventitem.Details);
+                    // Singular items
+                    if (inventitem.Quantity == 1)
+                    {
+                        rtbMessages.Text += "You loot " + inventitem.Quantity.ToString() + " " + inventitem.Details.Name
+                            + Environment.NewLine;
+                    }
+                    // Multiple items
+                    else
+                    {
+                        rtbMessages.Text += "You loot " + inventitem.Quantity.ToString() + " " + inventitem.Details.NamePlural
+                            + Environment.NewLine;
+                    }                    
+                }
+
+                // Update labels
+                passiveHPLabel.Text = _player.CurrentHP.ToString();
+                passiveGoldLabel.Text = _player.Gold.ToString();
+                passiveEXPLabel.Text = _player.Experience.ToString();
+                passiveLVLLabel.Text = _player.Level.ToString();
+
+                UpdateInventoryInUI();
+                UpdateWeaponListUI();
+                UpdatePotionListUI();
+
+                MoveTo(_player.CurrentLocation);
+            }
+            // If the monster is still alive
+            else
+            {
+                // Damage roll
+                int monsterdmg = RandomNumberGenerator.NumberBetween(0, _currentmonster.MaxDamage);
+
+                // Message
+                _player.Experience += _currentmonster.RewardXP;
+                rtbMessages.Text += "The" + _currentmonster.Name + " did" + monsterdmg.ToString() + " points of damage."
+                    + Environment.NewLine;
+
+                // Subtract HP
+                _player.CurrentHP -= monsterdmg;
+
+                passiveHPLabel.Text = _player.CurrentHP.ToString();
+
+                if (_player.CurrentHP <= 0)
+                {
+                    rtbMessages.Text += "You have died." + Environment.NewLine;
+                    MoveTo(World.LocationByID(World.ID_LOCATION_HOME));
+                }
+            }
         }
         private void btnUsePotion_Click(object sender, EventArgs e)
         {
 
+        }
+
+        private void btnNorth_Click_1(object sender, EventArgs e)
+        {
+            MoveTo(_player.CurrentLocation.LocationNorth);
+        }
+
+        private void btnEast_Click(object sender, EventArgs e)
+        {
+            MoveTo(_player.CurrentLocation.LocationEast);
+        }
+
+        private void btnSouth_Click(object sender, EventArgs e)
+        {
+            MoveTo(_player.CurrentLocation.LocationSouth);
+        }
+
+        private void btnWest_Click(object sender, EventArgs e)
+        {
+            MoveTo(_player.CurrentLocation.LocationWest);
         }
     }
 }
