@@ -42,6 +42,30 @@ namespace Engine
             return false;
         }
 
+        public bool HasThisQuest(Quest quest)
+        {
+            foreach (PlayerQuest pq in Quests)
+            {
+                if (pq.Details.ID == quest.ID)
+                {
+                    return true;
+                    
+                }
+            }
+            return false;
+        }
+
+        public bool CompletedThisQuest(Quest quest)
+        {
+            foreach (PlayerQuest pq in Quests)
+            {
+                if (pq.Details.ID == quest.ID)
+                {
+                    return pq.IsCompleted;
+                }
+            }
+            return false;
+        }
         public bool HasAllItemsToComplete(Quest quest)
         {
             foreach(QuestCompletionItem qci in quest.QuestCompletionItems){

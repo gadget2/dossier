@@ -28,32 +28,12 @@ namespace dossier
 
         private void MoveTo(Location newLocation)
         {
-            // Check to determine if the location has any items required to enter
-            //if (newLocation.ItemRequired != null)
-            //{
-            //    bool playerHasItem = false;
-            //    // Check each item in invetory and compare their IDs
-            //    foreach (InventoryItem item in _player.Inventory)
-            //    {
-            //        if (item.Details.ID == newLocation.ItemRequired.ID)
-            //        {
-            //            playerHasItem = true;
-            //            break;                    
-            //        }
-            //    }
-            //    // If the item wasn't found in inventory
-            //    if (!playerHasItem)
-            //    {
-            //        rtbMessages.Text = "You must have " + newLocation.ItemRequired.Name + " to enter here." + Environment.NewLine;
-            //        return;
-            //    }
-            //}
-                if (!_player.HasRequiredItemToEnter(newLocation))
-                {
-                    rtbMessages.Text += "You must have a " + newLocation.ItemRequired.Name + " to enter this location." + Environment.NewLine;
-                    return;
-                }           
-            
+            if (!_player.HasRequiredItemToEnter(newLocation))
+            {
+                rtbMessages.Text += "You must have a " + newLocation.ItemRequired.Name + " to enter this location." + Environment.NewLine;
+                return;
+            }
+
             // Set current location of player to the new location, assuming item requirements are met
             _player.CurrentLocation = newLocation;
 
@@ -75,26 +55,12 @@ namespace dossier
             // Check locations if there is an available quest there
             if (newLocation.QuestAvailable != null)
             {
-                bool playerHasQuest = false;
-                bool playerHasCompletedQuest = false;
-
-                // Check each quest in the players quest log via ID comparison
-                foreach (PlayerQuest quest in _player.Quests)
-                {
-                    if(quest.Details.ID == newLocation.QuestAvailable.ID)
-                    {
-                        playerHasQuest = true;
-                        // Check for completion
-                        if (quest.IsCompleted == true)
-                        {
-                            playerHasCompletedQuest = true;
-                        }
-                    }
-                }
+                bool playerAlreadyHasQuest = _player.HasThisQuest(newLocation.QuestAvailable);
+                bool playerAlreadyCompletedQuest = _player.CompletedThisQuest(newLocation.QuestAvailable);
                 // If the player has the quest, but is yet to complete it, run this routine
-                if (playerHasQuest)
+                if (playerAlreadyHasQuest)
                 {
-                    if (!playerHasCompletedQuest)
+                    if (!playerAlreadyCompletedQuest)
                     {
                         bool playerHasItemsToComplete = true;
                         // Check quest items for quests available in the location
@@ -157,7 +123,7 @@ namespace dossier
                 rtbMessages.Text += "You see a " + newLocation.MonsterHere.Name + Environment.NewLine;
                 // Init monster, pull values from World instance
                 Monster standardMonster = World.MonsterByID(newLocation.MonsterHere.ID);
-                _currentmonster = new Monster(standardMonster.ID, standardMonster.Name, standardMonster.MaxDamage, 
+                _currentmonster = new Monster(standardMonster.ID, standardMonster.Name, standardMonster.MaxDamage,
                     standardMonster.RewardXP, standardMonster.RewardGold, standardMonster.CurrentHP, standardMonster.MaxHP);
                 // Pull loot table values to monster
                 foreach (LootItem lootitem in standardMonster.LootTable)
@@ -179,48 +145,65 @@ namespace dossier
                 btnUseWeapon.Visible = false;
             }
             // Refresh inventory list
+            UpdateInventoryInUI();
+
+            // Refresh quest list
+            UpdateQuestListUI();
+
+            // Refresh combo box for players weapons
+            UpdateWeaponListUI();
+
+            // Refresh healing potions combo box
+            UpdatePotionListUI();                    
+        }
+
+        private void UpdateInventoryInUI()
+        {
             dgvInventory.RowHeadersVisible = false;
             dgvInventory.ColumnCount = 2;
             dgvInventory.Columns[0].Name = "Name";
             dgvInventory.Columns[0].Width = 197;
             dgvInventory.Columns[1].Name = "Quantity";
-            dgvInventory.Rows.Clear();
+            dgvInventory.Rows.Clear();       
 
-            foreach(InventoryItem item in _player.Inventory)
+            foreach (InventoryItem ii in _player.Inventory)
             {
-                if (item.Quantity > 0)
+                if (ii.Quantity > 0)
                 {
-                    dgvInventory.Rows.Add(new[] { item.Details.Name, item.Quantity.ToString() });
+                    dgvInventory.Rows.Add(new[] { ii.Details.Name, ii.Quantity.ToString() });
                 }
             }
+        }
 
-            // Refresh quest list
+        private void UpdateQuestListUI()
+        {
             dgvQuests.RowHeadersVisible = false;
             dgvInventory.ColumnCount = 2;
             dgvInventory.Columns[0].Name = "Name";
             dgvInventory.Columns[0].Width = 197;
             dgvInventory.Columns[1].Name = "Done?";
-
             dgvInventory.Rows.Clear();
 
             foreach (PlayerQuest quest in _player.Quests)
             {
-                dgvQuests.Rows.Add(new[] { quest.Details.Name, quest.IsCompleted.ToString() });             
-            }
+                dgvQuests.Rows.Add(new[] { quest.Details.Name, quest.IsCompleted.ToString() });
 
-            // Refresh combo box for players weapons
+            }
+        }
+
+        private void UpdateWeaponListUI()
+        {
             List<Weapon> weapons = new List<Weapon>();
-            foreach (InventoryItem item in _player.Inventory)
-            {
-                if (item.Details is Weapon)
+
+            foreach(InventoryItem ii in _player.Inventory){
+                if (ii.Details is Weapon)
                 {
-                    if (item.Quantity > 0)
+                    if (ii.Quantity > 0)
                     {
-                        weapons.Add((Weapon)item.Details);
-                    }                 
+                        weapons.Add((Weapon)ii.Details);
+                    }
                 }
             }
-            // If player has no weapons, hide combobox and use button
             if (weapons.Count == 0)
             {
                 cboWeapons.Visible = false;
@@ -233,33 +216,37 @@ namespace dossier
                 cboWeapons.ValueMember = "ID";
                 cboWeapons.SelectedIndex = 0;
             }
+        }
 
-            // Refresh healing potions combo box
+        private void UpdatePotionListUI()
+        {
             List<HealingPotion> potions = new List<HealingPotion>();
-            foreach (InventoryItem item in _player.Inventory)
+
+            foreach (InventoryItem ii in _player.Inventory)
             {
-                if (item.Details is HealingPotion)
+                if (ii.Details is HealingPotion)
                 {
-                    if (item.Quantity > 0)
+                    if (ii.Quantity > 0)
                     {
-                        potions.Add((HealingPotion)item.Details);
+                        potions.Add((HealingPotion)ii.Details);
                     }
                 }
             }
-            // If player has no potions, hide combobox and use button
             if (potions.Count == 0)
             {
                 cboPotions.Visible = false;
                 btnUsePotion.Visible = false;
             }
-            else              
-            {             
-                cboPotions.DataSource = potions;
-                cboPotions.DisplayMember ="Name";               
-                cboPotions.ValueMember = "ID";               
-                cboPotions.SelectedIndex = 0;
+            else
+            {
+                cboWeapons.DataSource = potions;
+                cboWeapons.DisplayMember = "Name";
+                cboWeapons.ValueMember = "ID";
+                cboWeapons.SelectedIndex = 0;
             }
+
         }
+
         private void btnUseWeapon_Click(object sender, EventArgs e)
         {
 
