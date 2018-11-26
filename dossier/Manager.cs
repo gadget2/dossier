@@ -352,7 +352,44 @@ namespace dossier
         }
         private void btnUsePotion_Click(object sender, EventArgs e)
         {
+            HealingPotion potion = (HealingPotion)cboPotions.SelectedItem;
 
+            _player.CurrentHP = (_player.CurrentHP + potion.AmountToHeal);
+
+            // Player current HP cannot exceed the ceiling HP value
+            if (_player.CurrentHP > _player.MaxHP)
+            {
+                _player.CurrentHP = _player.MaxHP;
+            }
+
+            // Remove potion
+            foreach (InventoryItem ii in _player.Inventory)
+            {
+                if (ii.Details.ID == potion.ID)
+                {
+                    ii.Quantity--;
+                    break;
+                }
+            }
+            // Display message
+            rtbMessages.Text += "You drink a " + potion.Name + Environment.NewLine;
+
+            // Retaliation from monster
+            int monsterRetailiationDMG = RandomNumberGenerator.NumberBetween(0, _currentmonster.MaxDamage);
+
+            rtbMessages.Text += _currentmonster.Name + "did " + monsterRetailiationDMG.ToString() + " points of damage."
+                + Environment.NewLine;
+
+            _player.CurrentHP -= monsterRetailiationDMG;
+
+            if (_player.CurrentHP <= 0)
+            {
+                rtbMessages.Text += "You have died." + Environment.NewLine;
+                MoveTo(World.LocationByID(World.ID_LOCATION_HOME));
+            }
+            passiveHPLabel.Text = _player.CurrentHP.ToString();
+            UpdateInventoryInUI();
+            UpdatePotionListUI();
         }
 
         private void btnNorth_Click_1(object sender, EventArgs e)
