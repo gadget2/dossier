@@ -23,30 +23,37 @@ namespace dossier
             labelGold.Text = _player.Gold.ToString();
             labelEXP.Text = _player.Experience.ToString();
             labelLevel.Text = _player.Level.ToString();
+            
         }
 
         private void MoveTo(Location newLocation)
         {
             // Check to determine if the location has any items required to enter
-            if (newLocation.ItemRequired != null)
-            {
-                bool playerHasItem = false;
-                // Check each item in invetory and compare their IDs
-                foreach (InventoryItem item in _player.Inventory)
+            //if (newLocation.ItemRequired != null)
+            //{
+            //    bool playerHasItem = false;
+            //    // Check each item in invetory and compare their IDs
+            //    foreach (InventoryItem item in _player.Inventory)
+            //    {
+            //        if (item.Details.ID == newLocation.ItemRequired.ID)
+            //        {
+            //            playerHasItem = true;
+            //            break;                    
+            //        }
+            //    }
+            //    // If the item wasn't found in inventory
+            //    if (!playerHasItem)
+            //    {
+            //        rtbMessages.Text = "You must have " + newLocation.ItemRequired.Name + " to enter here." + Environment.NewLine;
+            //        return;
+            //    }
+            //}
+                if (!_player.HasRequiredItemToEnter(newLocation))
                 {
-                    if (item.Details.ID == newLocation.ItemRequired.ID)
-                    {
-                        playerHasItem = true;
-                        break;                    
-                    }
-                }
-                // If the item wasn't found in inventory
-                if (!playerHasItem)
-                {
-                    rtbMessages.Text = "You must have " + newLocation.ItemRequired.Name + " to enter here." + Environment.NewLine;
+                    rtbMessages.Text += "You must have a " + newLocation.ItemRequired.Name + " to enter this location." + Environment.NewLine;
                     return;
-                }
-            }
+                }           
+            
             // Set current location of player to the new location, assuming item requirements are met
             _player.CurrentLocation = newLocation;
 
@@ -91,36 +98,7 @@ namespace dossier
                     {
                         bool playerHasItemsToComplete = true;
                         // Check quest items for quests available in the location
-                        foreach (QuestCompletionItem qci in newLocation.QuestAvailable.QuestCompletionItems)
-                        {
-                            bool foundInInventory = false;
-                            foreach (InventoryItem ii in _player.Inventory)
-                            {
-                                // Item check
-                                if (ii.Details.ID == qci.Details.ID)
-                                {
-                                    foundInInventory = true;
-                                    // Item quant check
-                                    // If the player has less items than required, set to false and break
-                                    if (ii.Quantity < qci.Quantity)
-                                    {
-                                        playerHasItemsToComplete = false;
-                                        // Eliminates extra checking effort for other required quest items, as
-                                        // the conditions have already not been met
-                                        break;
-
-                                    }
-                                    // Break for every other quantity check case (equal or greater amount of quantity)
-                                    break;
-                                }
-                            }
-                            // Check if item was found. If not stop looking for others
-                            if (!foundInInventory)
-                            {
-                                playerHasItemsToComplete = false;
-                                break;
-                            }
-                        }
+                        bool playerHasAllItemsToComplete = _player.HasAllItemsToComplete(newLocation.QuestAvailable);
                         // If the player has all items to complete the quest
                         if (playerHasItemsToComplete)
                         {
@@ -130,21 +108,8 @@ namespace dossier
 
                             // Remove quest items from player inventory, iterate through the required items
                             // for the quest existing in the zone
-                            foreach (QuestCompletionItem qci in newLocation.QuestAvailable.QuestCompletionItems)
-                            {
-                                // Remove each item in the required quantity
-                                foreach (InventoryItem ii in _player.Inventory)
-                                {
-                                    if (ii.Details.ID == qci.Details.ID)
-                                    {
-                                        // Subtract the amount of items needed by the quest in the player inventory 
-                                        // by the amount required for the quest. This makes excess items collected by
-                                        // the player to still remain in their inventory after the quest is completed
-                                        ii.Quantity -= qci.Quantity;
-                                        break;
-                                    }
-                                }                               
-                            }
+                            _player.RemoveQuestItems(newLocation.QuestAvailable);
+
                             // Quest rewards
                             rtbMessages.Text += "You receive: " + Environment.NewLine;
                             // XP 
@@ -158,31 +123,9 @@ namespace dossier
                             _player.Gold += newLocation.QuestAvailable.RewardGold;
 
                             // Add any items gained as a reward to the player inventory
-                            bool addedToInventory = false;
-                            foreach(InventoryItem ii in _player.Inventory){
-                                // Check to see if item already exists in the current inventory context  
-                                // If so increase the quantity by one
-                                if (ii.Details.ID == newLocation.QuestAvailable.RewardItem.ID)
-                                {
-                                    ii.Quantity++;
-                                    addedToInventory = true;
-                                    break;
-                                }                                                              
-                            }
-                            // If reward doesn't exist in the inventory
-                            if (!addedToInventory)
-                            {
-                                _player.Inventory.Add(new InventoryItem(newLocation.QuestAvailable.RewardItem, 1));
-                            }
+                            _player.AddItemToInventory(newLocation.QuestAvailable.RewardItem);
                             // Mark quest as completed
-                            foreach (PlayerQuest pq in _player.Quests)
-                            {
-                                if (pq.Details.ID == newLocation.QuestAvailable.ID)
-                                {
-                                    pq.IsCompleted = true;
-                                    break;
-                                }
-                            }
+                            _player.MarkQuestCompleted(newLocation.QuestAvailable);
                         }
                     }
                 }
